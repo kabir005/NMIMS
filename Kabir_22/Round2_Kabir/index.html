@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .controls label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .controls select, .controls input[type="text"] {
+            padding: 5px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .user-list {
+            margin-top: 20px;
+        }
+        .user-item {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            background-color: #fafafa;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pagination button {
+            background-color: #007bff;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .pagination button:disabled {
+            background-color: #d6d6d6;
+            cursor: not-allowed;
+        }
+        .pagination button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        .pagination button.active {
+            background-color: #0056b3;
+            font-weight: bold;
+        }
+        button {
+            background-color: #28a745;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Task List</h1>
+        <div class="controls">
+            <label for="search">Search:</label>
+            <input type="text" id="search" placeholder="Search tasks">
+            <label for="sort">Sort by:</label>
+            <select id="sort">
+                <option value="created">Created Date</option>
+                <option value="due">Due Date</option>
+                <option value="priority">Priority</option>
+            </select>
+            <label for="page">Page:</label>
+            <input type="number" id="page" min="1" value="1">
+            <label for="limit">Limit:</label>
+            <input type="number" id="limit" min="1" value="10">
+            <button onclick="fetchTasks()">Fetch Tasks</button>
+        </div>
+        <div id="task-list" class="user-list"></div>
+        <div id="pagination" class="pagination"></div>
+    </div>
+
+    <script>
+        const apiUrl = 'https://jsonplaceholder.typicode.com/users'; // Replace with your API URL
+
+        async function fetchTasks() {
+            const page = parseInt(document.getElementById('page').value, 10);
+            const limit = parseInt(document.getElementById('limit').value, 10);
+            const sort = document.getElementById('sort').value;
+            const search = document.getElementById('search').value;
+            const url = `${apiUrl}?_page=${page}&_limit=${limit}&_sort=${sort}&_order=asc&q=${encodeURIComponent(search)}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch tasks');
+                }
+                const data = await response.json();
+                // Assuming the API returns total task count in headers
+                const totalTasks = parseInt(response.headers.get('X-Total-Count'), 10) || 0;
+                const totalPages = Math.ceil(totalTasks / limit);
+                displayTasks({ tasks: data, total_pages: totalPages, current_page: page });
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('task-list').innerHTML = `<p>Error: ${error.message}</p>`;
+                document.getElementById('pagination').innerHTML = '';
+            }
+        }
+
+        function displayTasks(data) {
+            const taskList = document.getElementById('task-list');
+            const pagination = document.getElementById('pagination');
+
+            taskList.innerHTML = '';
+            pagination.innerHTML = '';
+
+            if (data.tasks.length === 0) {
+                taskList.innerHTML = '<p>No tasks found.</p>';
+                return;
+            }
+
+            data.tasks.forEach(task => {
+                const taskItem = document.createElement('div');
+                taskItem.className = 'user-item';
+                taskItem.innerHTML = `
+                    <strong>ID:</strong> ${task.id}<br>
+                    <strong>Name:</strong> ${task.name}<br>
+                    <strong>Due Date:</strong> ${task.dueDate}<br>
+                    <strong>Priority:</strong> ${task.priority}
+                `;
+                taskList.appendChild(taskItem);
+            });
+
+            const totalPages = data.total_pages;
+            const currentPage = data.current_page;
+
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageButton = document.createElement('button');
+                    pageButton.innerText = i;
+                    pageButton.className = i === currentPage ? 'active' : '';
+                    pageButton.disabled = (i === currentPage);
+                    pageButton.onclick = () => {
+                        document.getElementById('page').value = i;
+                        fetchTasks();
+                    };
+                    pagination.appendChild(pageButton);
+                }
+            }
+        }
+
+        // Fetch initial data
+        fetchTasks();
+    </script>
+</body>
+</html>
